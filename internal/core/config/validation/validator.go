@@ -1,7 +1,6 @@
 package validation
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 
@@ -31,15 +30,28 @@ func ValidateStruct(confStruct interface{}) error {
 	validate := validator.New()
 	err := validate.Struct(confStruct)
 	if err != nil {
-		if ves, ok := err.(validator.ValidationErrors); ok {
-			var msgs []string
-			for _, e := range ves {
-				fieldName := utils.YAMLNameOfFieldInStruct(e.Field(), confStruct)
-				msgs = append(msgs, fmt.Sprintf("Validation error in field '%s': %s", fieldName, e.Tag()))
-			}
-			return errors.New(strings.Join(msgs, "; "))
+		return &Error{
+			error:      err,
+			confStruct: confStruct,
 		}
-		return err
 	}
 	return nil
+}
+
+// Error wraps an error and formats it properly
+type Error struct {
+	error
+	confStruct interface{}
+}
+
+func (e *Error) Error() string {
+	if ves, ok := e.error.(validator.ValidationErrors); ok {
+		var msgs []string
+		for _, ve := range ves {
+			fieldName := utils.YAMLNameOfFieldInStruct(ve.Field(), e.confStruct)
+			msgs = append(msgs, fmt.Sprintf("Validation error in field '%s': %s", fieldName, ve.Tag()))
+		}
+		return strings.Join(msgs, "; ")
+	}
+	return e.error.Error()
 }

@@ -138,7 +138,11 @@ func (m *Monitor) Configure(conf *Config) error {
 		Timeout: 5 * time.Second,
 	}
 
+	firstTime := true
+
 	utils.RunOnInterval(ctx, func() {
+		defer func() { firstTime = false }()
+
 		// Derive the url each time since the AgentMeta data can change but
 		// there is no notification system for it.
 		host := conf.Host
@@ -159,7 +163,7 @@ func (m *Monitor) Configure(conf *Config) error {
 		})
 
 		resp, err := client.Get(url)
-		if err != nil {
+		if err != nil && !firstTime {
 			logger.WithError(err).Error("Could not connect to internal metric server")
 			return
 		}
